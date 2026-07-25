@@ -25,7 +25,8 @@ namespace UnitSystem
                 return;
 
             Debug.LogError(
-                $"{nameof(UnitFactory)}: Unit Prefab не назначен.",
+                $"{nameof(UnitFactory)}: " +
+                "Unit Prefab не назначен.",
                 this);
 
             enabled = false;
@@ -47,7 +48,8 @@ namespace UnitSystem
             if (grid == null || occupancy == null)
             {
                 Debug.LogError(
-                    $"{nameof(UnitFactory)} получила некорректные зависимости.",
+                    $"{nameof(UnitFactory)} получила " +
+                    "некорректные зависимости.",
                     this);
 
                 return false;
@@ -56,7 +58,8 @@ namespace UnitSystem
             if (_unitPrefab == null)
             {
                 Debug.LogError(
-                    $"{nameof(UnitFactory)}: Unit Prefab не назначен.",
+                    $"{nameof(UnitFactory)}: " +
+                    "Unit Prefab не назначен.",
                     this);
 
                 return false;
@@ -69,7 +72,10 @@ namespace UnitSystem
             return true;
         }
 
-        public Unit Create(GridPosition position)
+        public Unit Create(
+            GridPosition position,
+            UnitSquad squad,
+            int squadIndex)
         {
             if (!IsInitialized)
             {
@@ -80,14 +86,30 @@ namespace UnitSystem
                 return null;
             }
 
+            if (squad == null)
+            {
+                Debug.LogError(
+                    $"{nameof(UnitFactory)} получила " +
+                    "некорректный отряд.",
+                    this);
+
+                return null;
+            }
+
             Unit unit = Instantiate(
                 _unitPrefab,
                 _spawnedUnitsRoot);
 
-            UnitSpawnContext context = new UnitSpawnContext(
-                _grid,
-                _occupancy,
-                position);
+            unit.name =
+                $"{_unitPrefab.name}_{squadIndex}";
+
+            UnitSpawnContext context =
+                new UnitSpawnContext(
+                    _grid,
+                    _occupancy,
+                    squad,
+                    position,
+                    squadIndex);
 
             if (unit.Initialize(context))
                 return unit;

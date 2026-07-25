@@ -8,8 +8,11 @@ namespace UnitSystem
     {
         private GridFacade _grid;
         private UnitOccupancy _occupancy;
+        private UnitSquad _squad;
 
         public GridPosition Position { get; private set; }
+
+        public int SquadIndex { get; private set; }
 
         public bool IsInitialized { get; private set; }
 
@@ -25,7 +28,8 @@ namespace UnitSystem
             }
 
             if (context.Grid == null
-                || context.Occupancy == null)
+                || context.Occupancy == null
+                || context.Squad == null)
             {
                 Debug.LogError(
                     $"{nameof(Unit)} получил некорректный контекст.",
@@ -55,11 +59,31 @@ namespace UnitSystem
                 return false;
             }
 
+            if (!context.Squad.TryRegister(
+                    this,
+                    context.SquadIndex))
+            {
+                context.Occupancy.Unregister(
+                    this,
+                    context.Position);
+
+                Debug.LogError(
+                    $"Не удалось зарегистрировать юнита " +
+                    $"с индексом {context.SquadIndex}.",
+                    this);
+
+                return false;
+            }
+
             _grid = context.Grid;
             _occupancy = context.Occupancy;
+            _squad = context.Squad;
 
             Position = context.Position;
-            transform.position = _grid.GridToWorld(Position);
+            SquadIndex = context.SquadIndex;
+
+            transform.position =
+                _grid.GridToWorld(Position);
 
             IsInitialized = true;
             return true;
@@ -82,17 +106,25 @@ namespace UnitSystem
             }
 
             Position = targetPosition;
-            transform.position = _grid.GridToWorld(Position);
+
+            transform.position =
+                _grid.GridToWorld(Position);
 
             return true;
         }
 
         private void OnDestroy()
         {
-            if (!IsInitialized || _occupancy == null)
+            if (!IsInitialized)
                 return;
 
-            _occupancy.Unregister(this, Position);
+            _occupancy?.Unregister(
+                this,
+                Position);
+
+            _squad?.Unregister(
+                this,
+                SquadIndex);
         }
     }
 }
