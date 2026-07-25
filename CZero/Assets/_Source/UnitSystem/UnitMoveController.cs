@@ -13,14 +13,12 @@ namespace UnitSystem
         [SerializeField]
         private GridCursorController _gridCursor;
 
-        [SerializeField]
         private Unit _controlledUnit;
 
         private void Awake()
         {
             if (_primaryAction?.action != null
-                && _gridCursor != null
-                && _controlledUnit != null)
+                && _gridCursor != null)
             {
                 return;
             }
@@ -35,7 +33,7 @@ namespace UnitSystem
 
         private void OnEnable()
         {
-            _primaryAction.action.Enable();
+            _primaryAction?.action?.Enable();
         }
 
         private void OnDisable()
@@ -43,8 +41,16 @@ namespace UnitSystem
             _primaryAction?.action?.Disable();
         }
 
+        public void SetControlledUnit(Unit unit)
+        {
+            _controlledUnit = unit;
+        }
+
         private void Update()
         {
+            if (_controlledUnit == null)
+                return;
+
             if (!_primaryAction.action.WasPressedThisFrame())
                 return;
 
@@ -54,7 +60,7 @@ namespace UnitSystem
                 return;
             }
 
-            _controlledUnit.Place(position);
+            _controlledUnit.TryMoveTo(position);
         }
     }
 }

@@ -6,53 +6,93 @@ namespace UnitSystem
     [DisallowMultipleComponent]
     public sealed class Unit : MonoBehaviour
     {
-        [SerializeField]
         private GridFacade _grid;
+        private UnitOccupancy _occupancy;
 
         public GridPosition Position { get; private set; }
 
-        public bool IsPlaced { get; private set; }
+        public bool IsInitialized { get; private set; }
 
-        private void Awake()
+        public bool Initialize(UnitSpawnContext context)
         {
-            if (_grid != null)
-                return;
-
-            Debug.LogError(
-                $"{nameof(Unit)}: Grid не назначен.",
-                this);
-
-            enabled = false;
-        }
-
-        private void Start()
-        {
-            if (!_grid.TryWorldToGrid(
-                    transform.position,
-                    out GridPosition position))
+            if (IsInitialized)
             {
                 Debug.LogError(
-                    $"{nameof(Unit)} находится за пределами сетки.",
+                    $"{nameof(Unit)} уже инициализирован.",
                     this);
 
-                enabled = false;
-                return;
+                return false;
             }
 
-            Place(position);
+            if (context.Grid == null
+                || context.Occupancy == null)
+            {
+                Debug.LogError(
+                    $"{nameof(Unit)} получил некорректный контекст.",
+                    this);
+
+                return false;
+            }
+
+            if (!context.Grid.Contains(context.Position))
+            {
+                Debug.LogError(
+                    $"Клетка {context.Position} находится " +
+                    "за пределами сетки.",
+                    this);
+
+                return false;
+            }
+
+            if (!context.Occupancy.TryRegister(
+                    this,
+                    context.Position))
+            {
+                Debug.LogError(
+                    $"Клетка {context.Position} уже занята.",
+                    this);
+
+                return false;
+            }
+
+            _grid = context.Grid;
+            _occupancy = context.Occupancy;
+
+            Position = context.Position;
+            transform.position = _grid.GridToWorld(Position);
+
+            IsInitialized = true;
+            return true;
         }
 
-        public bool Place(GridPosition position)
+        public bool TryMoveTo(GridPosition targetPosition)
         {
-            if (_grid == null || !_grid.Contains(position))
+            if (!IsInitialized)
                 return false;
 
-            Position = position;
-            IsPlaced = true;
+            if (!_grid.Contains(targetPosition))
+                return false;
 
-            transform.position = _grid.GridToWorld(position);
+            if (!_occupancy.TryMove(
+                    this,
+                    Position,
+                    targetPosition))
+            {
+                return false;
+            }
+
+            Position = targetPosition;
+            transform.position = _grid.GridToWorld(Position);
 
             return true;
+        }
+
+        private void OnDestroy()
+        {
+            if (!IsInitialized || _occupancy == null)
+                return;
+
+            _occupancy.Unregister(this, Position);
         }
     }
 }
